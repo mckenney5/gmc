@@ -1,7 +1,7 @@
 G & M Code Checker
 ==================
 
-![screen shot](https://github.com/mckenney5/gmc/raw/master/sc.png)
+![screen shot](https://github.com/mckenney5/gmc/blob/main/sc.png?raw=true)
 
 ## Description
 This program checks gcode for these specific parameters:

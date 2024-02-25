@@ -13,8 +13,8 @@ This program checks gcode for these specific parameters:
 - The program should start with M03 and end with M05
 - The 1st and 2nd line should have a comment
 
-All of that are requirments for a high school CNC project.
-This program helps students check for those requirments by pasting their program.
+All of that are requirements for a high school CNC project.
+This program helps students check for those requirements by pasting their program.
 
 ## License
 This code is licensed under the MIT license. See 'LICENSE' for details.

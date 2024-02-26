@@ -131,6 +131,7 @@ function check_gcode(gcode_list){
 	let has_g01 = false;
 	let has_g02 = false;
 	let has_g03 = false;
+	let has_z_change = false;
 
 	//defaults
 	const x_low_bounds = 0.0;
@@ -226,6 +227,8 @@ function check_gcode(gcode_list){
 				} else if(isNaN(num)){
 					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
 					error_list.push(i);
+				} else {
+					has_z_change = true;
 				}
 			} else if(gcode_tokens[j][0] == 'I'){
 				//check bounds
@@ -260,6 +263,7 @@ function check_gcode(gcode_list){
 	if(has_m03 == false) log('E', "Missing M03");
 	if(has_m05 == false) log('E', "Missing M05");
 	if(has_g01 == false) log('E', "Missing G01 in your program!");
+	if(has_z_change == false) log('E', "Missing Z change (e.x. G01 Z-0.25), your material will not be cut!");
 	
 	// Warnings
 	if(has_g00 == false) log('W', "Missing G00");

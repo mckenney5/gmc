@@ -160,6 +160,15 @@ function handle_mcode(gcode, error_list, line_number, flags){
 		flags[gcode] = true;
 }
 
+function handle_typos(gcode, error_list, line_number, typo_list){
+	if(typo_list.includes(gcode)){
+		log('E', "You used the letter 'o' instead of the number 0 (e.x. Go1 =/= G01), line " + (line_number+1));
+	} else {
+		log('E', "Unknown command '" + gcode + "', line " + (line_number+1));
+	}
+	error_list.push(line_number);
+}
+
 function check_gcode(gcode_list){
 	
 	//defaults
@@ -176,6 +185,7 @@ function check_gcode(gcode_list){
 	const minimum_line_length = 25;
 	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
 	const valid_mcode = ["M03", "M05"];
+	const typo_list = ["GOO", "GO0", "G0O", "GO1", "GO2", "GO3", "G9O", "MO3", "MO5", "F1O"]; //note those are o's not 0's
 
 
 	let error_list = [-1];
@@ -195,8 +205,6 @@ function check_gcode(gcode_list){
 
 	//Old flags
 	//flags
-	let has_m03 = false;
-	let has_m05 = false;
 	let has_z_change = false;
 
 
@@ -276,9 +284,9 @@ function check_gcode(gcode_list){
 					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
 					error_list.push(i);
 				}
-			} else if(gcode_tokens[j] == "GOO" || gcode_tokens[j] == "GO1" || gcode_tokens[j] == "GO2" || gcode_tokens[j] == "GO3"){
-				log('E', "You used the letter 'o' instead of the number 0 (e.x. Go1 =/= G01), line " + (i+1));
-				error_list.push(i);
+			} else {
+				//check for typos, if not then error out for unknown command
+				handle_typos(gcode_tokens[j], error_list, i, typo_list);
 			}
 		}
 	}

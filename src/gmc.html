@@ -169,15 +169,53 @@ function handle_typos(gcode, error_list, line_number, typo_list){
 	error_list.push(line_number);
 }
 
+function bounds_check(cord, new_value, error_list, line_number, flags){
+	console.log("Checking " + cord.name + " with changing the value to '" + new_value + "'");
+	//NaN check
+	if(isNaN(new_value)) {
+		log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command '" + cord.name + new_value + "'");
+		error_list.push(line_number);
+		return;
+	}
+	
+	//Set value
+	cord.current_value = new_value;
+	cord.changed = true;
+	
+	//Check bounds
+	if(cord.current_value > cord.high_bounds || cord.current_value < cord.low_bounds){
+		log('E', cord.name + " is out of bounds (" + cord.low_bounds + " through " + cord.high_bounds + "), line " + (line_number+1));
+		error_list.push(line_number);
+	}
+}
+
 function check_gcode(gcode_list){
 	
 	//defaults
-	const x_low_bounds = 0.0;
-	const x_high_bounds = 4.0;
-	const y_low_bounds = 0.0;
-	const y_high_bounds = 4.0;
-	const z_low_bounds = -0.250;
-	const z_high_bounds = 1.0;
+	let cords = {
+		x: {
+			name: 'X',
+			low_bounds: 0.0,
+			high_bounds: 4.0,
+			current_value: 0.0,
+			changed: false,
+		},
+		y: {
+			name: 'Y',
+			low_bounds: 0.0,
+			high_bounds: 4.0,
+			current_value: 0.0,
+			changed: false,
+		},
+		z: {
+			name: 'Z',
+			low_bounds: -0.250,
+			high_bounds: 1.0,
+			current_value: 0.0,
+			changed: false,
+		}
+	}
+
 	const i_low_bounds = -4.0;
 	const i_high_bounds = 4.0;
 	const j_low_bounds = -4.0;
@@ -185,6 +223,7 @@ function check_gcode(gcode_list){
 	const minimum_line_length = 25;
 	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
 	const valid_mcode = ["M03", "M05"];
+	const valid_cords = ['X', 'Y', 'Z', 'I', 'J'];
 	const typo_list = ["GOO", "GO0", "G0O", "GO1", "GO2", "GO3", "G9O", "MO3", "MO5", "F1O"]; //note those are o's not 0's
 
 
@@ -233,37 +272,11 @@ function check_gcode(gcode_list){
 			} else if(valid_mcode.includes(gcode_tokens[j])){
 				handle_mcode(gcode_tokens[j], error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'X'){
-				//check bounds
-				let num = parseFloat(gcode_tokens[j].substring(1));
-				if(num > x_high_bounds || num < x_low_bounds){
-					log('E', "X is out of bounds (" + x_low_bounds + " through " + x_high_bounds + "), line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				} else if(isNaN(num)) {
-					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				}
+				bounds_check(cords.x, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'Y'){
-				//check bounds
-				let num = parseFloat(gcode_tokens[j].substring(1));
-				if(num > y_high_bounds || num < y_low_bounds){
-					log('E', "Y is out of bounds (" + y_low_bounds + " through " + y_high_bounds + "), line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				} else if(isNaN(num)){
-					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				}
+				bounds_check(cords.y, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'Z'){
-				//check bounds
-				let num = parseFloat(gcode_tokens[j].substring(1));
-				if(num > z_high_bounds || num < z_low_bounds){
-					log('E', "Z is out of bounds (" + z_low_bounds + " through " + z_high_bounds + "), line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				} else if(isNaN(num)){
-					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				} else {
-					has_z_change = true;
-				}
+				bounds_check(cords.z, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'I'){
 				//check bounds
 				let num = parseFloat(gcode_tokens[j].substring(1));
@@ -297,7 +310,7 @@ function check_gcode(gcode_list){
 	if(flags["M03"] == false) log('E', "Missing M03");
 	if(flags["M05"] == false) log('E', "Missing M05");
 	if(flags["G01"] == false) log('E', "Missing G01 in your program!");
-	if(has_z_change == false) log('E', "Missing Z change (e.x. G01 Z-0.25), your material will not be cut!");
+	if(cords.z.change == false) log('E', "Missing Z change (e.x. G01 Z-0.25), your material will not be cut!");
 	if(gcode_list[gcode_list.length-1].split(" ")[0] != "M05" && flags["M05"] == true)
 		log('E', "M05 was used too early THIS CAN BREAK THE CUTTING BIT. M05 should be the last line");
 	

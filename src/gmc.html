@@ -163,7 +163,10 @@ function check_gcode(gcode_list){
 		// Check each token
 		for(let j = 0; j < gcode_tokens.length; j++){
 			console.log("Checking token '" + gcode_tokens[j] + "'");
-			if(gcode_tokens[j] == "G90"){
+			if(gcode_tokens[j][0] == '('){
+				//HACK to skip the line when we see a paren
+				break;
+			} else if(gcode_tokens[j] == "G90"){
 				if(has_g90 == true)
 					log('W', "Repeat G90 decleration, line " + (i+1));
 				else

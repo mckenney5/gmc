@@ -213,13 +213,21 @@ function check_gcode(gcode_list){
 			high_bounds: 1.0,
 			current_value: 0.0,
 			changed: false,
-		}
+		},
+		i: {
+			name: 'I',
+			low_bounds: -4.0,
+			high_bounds: 4.0,
+			current_value: 0.0,
+		},
+		j: {
+			name: 'J',
+			low_bounds: -4.0,
+			high_bounds: 4.0,
+			current_value: 0.0,
+		},
 	}
 
-	const i_low_bounds = -4.0;
-	const i_high_bounds = 4.0;
-	const j_low_bounds = -4.0;
-	const j_high_bounds = 4.0;
 	const minimum_line_length = 25;
 	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
 	const valid_mcode = ["M03", "M05"];
@@ -278,25 +286,9 @@ function check_gcode(gcode_list){
 			} else if(gcode_tokens[j][0] == 'Z'){
 				bounds_check(cords.z, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'I'){
-				//check bounds
-				let num = parseFloat(gcode_tokens[j].substring(1));
-				if(num > i_high_bounds || num < i_low_bounds){
-					log('E', "I is out of bounds (" + i_low_bounds + " through " + i_high_bounds + "), line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				} else if(isNaN(num)){
-					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				}
+				bounds_check(cords.i, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'J'){
-				//check bounds
-				let num = parseFloat(gcode_tokens[j].substring(1));
-				if(num > j_high_bounds || num < j_low_bounds){
-					log('E', "J is out of bounds (" + j_low_bounds + " through " + j_high_bounds + "), line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				} else if(isNaN(num)){
-					log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command " + (j+1));
-					error_list.push(i);
-				}
+				bounds_check(cords.j, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else {
 				//check for typos, if not then error out for unknown command
 				handle_typos(gcode_tokens[j], error_list, i, typo_list);

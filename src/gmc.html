@@ -120,19 +120,28 @@ function log(ew, data){
 		console.log(data);
 }
 
+function handle_gcode(gcode, error_list, line_number, flags){
+	switch (gcode){
+		case "G00":
+		case "G01":
+		case "G02":
+		case "G03":
+			flags[gcode] = true;
+			return;
+	}
+	if(gcode == "G90"){
+		if(flags[gcode] == true){
+			log('W', "Repeat G90 decleration, line " + (line_number+1));
+		} else {
+			flags[gcode] = true;
+		}
+	} else {
+		throw new Error("Internal error. Unsupported GCode. If you are reading this, the programmer forgot to finish adding your gcode command");
+	}
+}
+
 function check_gcode(gcode_list){
-
-	//flags
-	let has_g90 = false;
-	let has_f10 = false;
-	let has_m03 = false;
-	let has_m05 = false;
-	let has_g00 = false;
-	let has_g01 = false;
-	let has_g02 = false;
-	let has_g03 = false;
-	let has_z_change = false;
-
+	
 	//defaults
 	const x_low_bounds = 0.0;
 	const x_high_bounds = 4.0;
@@ -140,13 +149,34 @@ function check_gcode(gcode_list){
 	const y_high_bounds = 4.0;
 	const z_low_bounds = -0.250;
 	const z_high_bounds = 1.0;
-	const i_low_bounds = 0.0;
+	const i_low_bounds = -4.0;
 	const i_high_bounds = 4.0;
-	const j_low_bounds = 0.0;
+	const j_low_bounds = -4.0;
 	const j_high_bounds = 4.0;
 	const minimum_line_length = 25;
-
+	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
 	let error_list = [-1];
+	
+
+	let flags = {
+		"G00": false,
+		"G01": false,
+		"G02": false,
+		"G03": false,
+		"G90": false,
+		"F10": false,
+		"M03": false,
+		"M05": false,
+		"Z"  : false //z change
+	};
+
+	//Old flags
+	//flags
+	let has_f10 = false;
+	let has_m03 = false;
+	let has_m05 = false;
+	let has_z_change = false;
+
 
 	//Check first two lines for comments
 	if(gcode_list[0][0] != '('){
@@ -163,11 +193,11 @@ function check_gcode(gcode_list){
 		// Check each token
 		for(let j = 0; j < gcode_tokens.length; j++){
 			console.log("Checking token '" + gcode_tokens[j] + "'");
-			if(gcode_tokens[j] == "G90"){
-				if(has_g90 == true)
-					log('W', "Repeat G90 decleration, line " + (i+1));
-				else
-					has_g90 = true;
+			if(gcode_tokens[j][0] == '('){
+				//HACK skips the rest of the line. TODO loop until other ) is found
+				break;
+			} else if(valid_gcode.includes(gcode_tokens[j])){
+				handle_gcode(gcode_tokens[j], error_list, i, flags);
 			} else if(gcode_tokens[j] == "F10"){
 				if(has_f10 == true)
 					log('W', "Repeat F10 decleration, line " + (i+1));
@@ -190,14 +220,6 @@ function check_gcode(gcode_list){
 					log('E', "Machine turned off too early! This can break the cutting bit. Line " + (i+1));
 					error_list.push(i);
 				}
-			} else if(gcode_tokens[j] == "G00"){
-				has_g00 = true;
-			} else if(gcode_tokens[j] == "G01"){
-				has_g01 = true;
-			} else if(gcode_tokens[j] == "G02"){
-				has_g02 = true;
-			} else if(gcode_tokens[j] == "G03"){
-				has_g03 = true;
 			} else if(gcode_tokens[j][0] == 'X'){
 				//check bounds
 				let num = parseFloat(gcode_tokens[j].substring(1));
@@ -258,16 +280,16 @@ function check_gcode(gcode_list){
 	}
 	//Check for what we are missing
 	// Errors
-	if(has_g90 == false) log('E', "Missing G90");
+	if(flags["G90"] == false) log('E', "Missing G90");
 	if(has_f10 == false) log('E', "Missing F10");
 	if(has_m03 == false) log('E', "Missing M03");
 	if(has_m05 == false) log('E', "Missing M05");
-	if(has_g01 == false) log('E', "Missing G01 in your program!");
+	if(flags["G01"] == false) log('E', "Missing G01 in your program!");
 	if(has_z_change == false) log('E', "Missing Z change (e.x. G01 Z-0.25), your material will not be cut!");
 	
 	// Warnings
-	if(has_g00 == false) log('W', "Missing G00");
-	if(has_g02 == false & has_g03 == false) log('W', "Missing G02 or G03 (arcs)");
+	if(flags["G00"] == false) log('W', "Missing G00");
+	if(flags["G02"] == false & flags["G03"] == false) log('W', "Missing G02 or G03 (arcs)");
 	if(gcode_list.length < minimum_line_length) log('W', "Does not meet minimum line length of " + minimum_line_length);
 
 	// Writes out the program to show the user what they did wrong

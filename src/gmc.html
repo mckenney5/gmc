@@ -140,6 +140,18 @@ function handle_gcode(gcode, error_list, line_number, flags){
 	}
 }
 
+function handle_fcode(gcode, error_list, line_number, flags){
+	if(gcode == "F10"){
+		if(flags[gcode] == true)
+			log('W', "Repeat F10 decleration, line " + (line_number+1));
+		else
+			flags[gcode] = true;
+	} else {
+		log('E', "Feed rate is not set to 10! This can break the cutting bit!, Line " + line_number+1);
+		error_list.push(line_number);
+	}
+}
+
 function check_gcode(gcode_list){
 	
 	//defaults
@@ -155,6 +167,7 @@ function check_gcode(gcode_list){
 	const j_high_bounds = 4.0;
 	const minimum_line_length = 25;
 	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
+
 	let error_list = [-1];
 	
 
@@ -172,7 +185,6 @@ function check_gcode(gcode_list){
 
 	//Old flags
 	//flags
-	let has_f10 = false;
 	let has_m03 = false;
 	let has_m05 = false;
 	let has_z_change = false;
@@ -198,14 +210,8 @@ function check_gcode(gcode_list){
 				break;
 			} else if(valid_gcode.includes(gcode_tokens[j])){
 				handle_gcode(gcode_tokens[j], error_list, i, flags);
-			} else if(gcode_tokens[j] == "F10"){
-				if(has_f10 == true)
-					log('W', "Repeat F10 decleration, line " + (i+1));
-				else
-					has_f10 = true;
 			} else if(gcode_tokens[j][0] == 'F'){
-				log('E', "Feed rate is not set to 10! This can break the cutting bit!");
-				error_list.push(i);
+				handle_fcode(gcode_tokens[j], error_list, i, flags);
 			} else if(gcode_tokens[j] == "M03"){
 				if(has_m03 == true)
 					log('W', "Repeat M03 decleration, line " + (i+1));
@@ -281,7 +287,7 @@ function check_gcode(gcode_list){
 	//Check for what we are missing
 	// Errors
 	if(flags["G90"] == false) log('E', "Missing G90");
-	if(has_f10 == false) log('E', "Missing F10");
+	if(flags["F10"] == false) log('E', "Missing F10");
 	if(has_m03 == false) log('E', "Missing M03");
 	if(has_m05 == false) log('E', "Missing M05");
 	if(flags["G01"] == false) log('E', "Missing G01 in your program!");

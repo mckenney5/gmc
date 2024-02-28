@@ -170,6 +170,12 @@ function handle_typos(gcode, error_list, line_number, typo_list){
 //checks against the o vs 0 typo list, if it is not in there, it is not a known command to us
 	if(typo_list.includes(gcode)){
 		log('E', "You used the letter 'o' instead of the number 0 (e.x. Go1 =/= G01), line " + (line_number+1));
+	} else if(gcode.trim() == ''){
+		//check if the command was just white space, if so, this can be ignored without an error
+		console.log("Ignoring white space line " + (line_number+1));
+		return;
+	} else if(!isNaN(parseFloat(gcode))){
+		log('E', "Number is missing axis (X/Y/Z/I/J), line " + (line_number+1));
 	} else {
 		log('E', "Unknown command '" + gcode + "', line " + (line_number+1));
 	}
@@ -181,8 +187,12 @@ function bounds_check(cord, new_value, error_list, line_number, flags){
 	console.log("Changing " + cord.name + " with the value '" + new_value + "'");
 
 	// checks if the number is not a float, then logs an error
-	if(isNaN(new_value)) {
-		log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command '" + cord.name + new_value + "'");
+	if(new_value[0] == ' '){
+		console.log("Submit a bug report if you see this in the console. bounds_check --> '" + new_value + "'");
+		log('E', "Space between coordinate '" + cord.name + "' and '" + new_value.substring(1) + "', line " + (line_number+1));
+		error_list.push(line_number);
+	} else if(isNaN(parseFloat(new_value))) {
+		log('E', "Missing coordinates (e.x. " + cord.name + "#.##), line " + (line_number+1) + ", command '" + cord.name + new_value + "'");
 		error_list.push(line_number);
 		return;
 	}
@@ -190,7 +200,7 @@ function bounds_check(cord, new_value, error_list, line_number, flags){
 	// set value
 	cord.current_value = new_value;
 	cord.changed = true;
-	
+
 	// check bounds
 	if(cord.current_value > cord.high_bounds || cord.current_value < cord.low_bounds){
 		log('E', cord.name + " is out of bounds (" + cord.low_bounds + " through " + cord.high_bounds + "), line " + (line_number+1));
@@ -289,15 +299,15 @@ function check_gcode(gcode_list){
 			} else if(valid_mcode.includes(gcode_tokens[j])){
 				handle_mcode(gcode_tokens[j], error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'X'){
-				bounds_check(cords.x, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
+				bounds_check(cords.x, gcode_tokens[j].substring(1), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'Y'){
-				bounds_check(cords.y, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
+				bounds_check(cords.y, gcode_tokens[j].substring(1), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'Z'){
-				bounds_check(cords.z, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
+				bounds_check(cords.z, gcode_tokens[j].substring(1), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'I'){
-				bounds_check(cords.i, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
+				bounds_check(cords.i, gcode_tokens[j].substring(1), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'J'){
-				bounds_check(cords.j, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
+				bounds_check(cords.j, gcode_tokens[j].substring(1), error_list, i, flags);
 			} else {
 				// check for typos, if not then error out for unknown command
 				handle_typos(gcode_tokens[j], error_list, i, typo_list);

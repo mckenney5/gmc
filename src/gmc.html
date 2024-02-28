@@ -65,17 +65,13 @@ SOFTWARE.
 		<p id="output"><br></p>
 		<p id="error_count"><br></p>
 	</div>
+	
 	<script>
-
-//Global vars
-var warnings = 0;
-var errors = 0;
-
 function write_to_output(data){
 	document.getElementById("output").innerHTML += data + "</br></br>";
 }
 
-function w2l(data){
+function write_to_detailed_look(data){
 	document.getElementById("line_output").innerHTML += data + "</br>";
 }
 
@@ -87,16 +83,19 @@ function output_program(data, error_list){
 	//writes to line_output in html, highlights lines that have issues
 	let line_number = 0;
 	for(let i = 0; i < data.length; i++){
+		// set up pretty line numbers
 		if((i+1) < 10)
-			line_number = "|  " + (i+1) + "| ";
+			line_number = "|  " + (i+1) + "| "; // <-- note these are unicode spaces
 		else if((i+1) < 100)
-			line_number = "| " + (i+1) + "| ";
+			line_number = "| " + (i+1) + "| "; // <--
 		else
 			line_number = (i+1);
+			
+		// check if there is an error on that life, if so, mark it
 		if(error_list.includes(i))
-			w2l("<mark>" + line_number + data[i] + "</mark>");
+			write_to_detailed_look("<mark>" + line_number + data[i] + " </mark>"); // <--
 		else
-			w2l(line_number + data[i]); 
+			write_to_detailed_look(line_number + data[i]); 
 	}
 }
 
@@ -121,6 +120,7 @@ function log(ew, data){
 }
 
 function handle_gcode(gcode, error_list, line_number, flags){
+//does checks on the G (geometric) codes
 	switch (gcode){
 		case "G00":
 		case "G01":
@@ -141,6 +141,7 @@ function handle_gcode(gcode, error_list, line_number, flags){
 }
 
 function handle_fcode(gcode, error_list, line_number, flags){
+//does a check on the F (function) codes. This is set up assuming that you only want one feed rate for cutting
 	if(gcode == "F10"){
 		if(flags[gcode] == true)
 			log('W', "Repeat F10 decleration, line " + (line_number+1));
@@ -153,6 +154,7 @@ function handle_fcode(gcode, error_list, line_number, flags){
 }
 
 function handle_mcode(gcode, error_list, line_number, flags){
+//does checks on the M (machine) codes
 	// Before calling this function, the program should check if it is an aproved M code
 	if(flags[gcode] == true)
 		log('W', "Repeat " + gcode + " decleration, line " + (line_number+1));
@@ -161,6 +163,7 @@ function handle_mcode(gcode, error_list, line_number, flags){
 }
 
 function handle_typos(gcode, error_list, line_number, typo_list){
+//checks against the o vs 0 typo list, if it is not in there, it is not a known command to us
 	if(typo_list.includes(gcode)){
 		log('E', "You used the letter 'o' instead of the number 0 (e.x. Go1 =/= G01), line " + (line_number+1));
 	} else {
@@ -170,19 +173,21 @@ function handle_typos(gcode, error_list, line_number, typo_list){
 }
 
 function bounds_check(cord, new_value, error_list, line_number, flags){
-	console.log("Checking " + cord.name + " with changing the value to '" + new_value + "'");
-	//NaN check
+//checks the coordinates by giving it a new value, then checking the bounds
+	console.log("Changing " + cord.name + " with the value '" + new_value + "'");
+
+	// checks if the number is not a float, then logs an error
 	if(isNaN(new_value)) {
 		log('E', "Unrecognized command or missing cords, line " + (i+1) + ", command '" + cord.name + new_value + "'");
 		error_list.push(line_number);
 		return;
 	}
 	
-	//Set value
+	// set value
 	cord.current_value = new_value;
 	cord.changed = true;
 	
-	//Check bounds
+	// check bounds
 	if(cord.current_value > cord.high_bounds || cord.current_value < cord.low_bounds){
 		log('E', cord.name + " is out of bounds (" + cord.low_bounds + " through " + cord.high_bounds + "), line " + (line_number+1));
 		error_list.push(line_number);
@@ -191,7 +196,10 @@ function bounds_check(cord, new_value, error_list, line_number, flags){
 
 function check_gcode(gcode_list){
 	
-	//defaults
+	// --- Defaults --- \\\
+	// Change your values here for your use case
+	// low_bounds is how low it will go before erroring, high_bounds is how high before erroring
+	
 	let cords = {
 		x: {
 			name: 'X',
@@ -233,11 +241,13 @@ function check_gcode(gcode_list){
 	const valid_mcode = ["M03", "M05"];
 	const valid_cords = ['X', 'Y', 'Z', 'I', 'J'];
 	const typo_list = ["GOO", "GO0", "G0O", "GO1", "GO2", "GO3", "G9O", "MO3", "MO5", "F1O"]; //note those are o's not 0's
+	// --- end defaults --- \\\
 
-
+	// vars
 	let error_list = [-1];
 	
 
+	// flags - used to check if those commands are in the users program
 	let flags = {
 		"G00": false,
 		"G01": false,
@@ -250,12 +260,8 @@ function check_gcode(gcode_list){
 		"Z"  : false //z change
 	};
 
-	//Old flags
-	//flags
-	let has_z_change = false;
-
-
-	//Check first two lines for comments
+	// --- code check starts here ---
+	// check first two lines for comments
 	if(gcode_list[0][0] != '('){
 		log('W', "Missing program title. Line 1");
 	} else if(gcode_list[1][0] != '('){
@@ -267,11 +273,11 @@ function check_gcode(gcode_list){
 		console.log("gcode_list[" + i + "] '" + gcode_list[i] + "'");
 		console.log("gcode_tokens '" + gcode_tokens + "'");
 
-		// Check each token
+		// check each token
 		for(let j = 0; j < gcode_tokens.length; j++){
 			console.log("Checking token '" + gcode_tokens[j] + "'");
 			if(gcode_tokens[j][0] == '('){
-				//HACK skips the rest of the line. TODO loop until other ) is found
+				// HACK skips the rest of the line. TODO loop until other ) is found
 				break;
 			} else if(valid_gcode.includes(gcode_tokens[j])){
 				handle_gcode(gcode_tokens[j], error_list, i, flags);
@@ -290,13 +296,13 @@ function check_gcode(gcode_list){
 			} else if(gcode_tokens[j][0] == 'J'){
 				bounds_check(cords.j, parseFloat(gcode_tokens[j].substring(1)), error_list, i, flags);
 			} else {
-				//check for typos, if not then error out for unknown command
+				// check for typos, if not then error out for unknown command
 				handle_typos(gcode_tokens[j], error_list, i, typo_list);
 			}
 		}
 	}
-	//Check for what we are missing
-	// Errors
+	// check for what we are missing
+	// errors
 	if(flags["G90"] == false) log('E', "Missing G90");
 	if(flags["F10"] == false) log('E', "Missing F10");
 	if(flags["M03"] == false) log('E', "Missing M03");
@@ -306,17 +312,17 @@ function check_gcode(gcode_list){
 	if(gcode_list[gcode_list.length-1].split(" ")[0] != "M05" && flags["M05"] == true)
 		log('E', "M05 was used too early THIS CAN BREAK THE CUTTING BIT. M05 should be the last line");
 	
-	// Warnings
+	// warnings
 	if(flags["G00"] == false) log('W', "Missing G00");
 	if(flags["G02"] == false & flags["G03"] == false) log('W', "Missing G02 or G03 (arcs)");
 	if(gcode_list.length < minimum_line_length) log('W', "Does not meet minimum line length of " + minimum_line_length);
 
-	// Writes out the program to show the user what they did wrong
+	// writes out the program to show the user what they did wrong
 	output_program(gcode_list, error_list);
 }
 
 function check_input(){
-	//Program Start
+//program Start
 	reset_state();
 	let raw_gcode = document.getElementById('user_input').value;
 	let raw_gcode_list = raw_gcode.toUpperCase().split("\n");

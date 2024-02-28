@@ -55,7 +55,7 @@ SOFTWARE.
 	 	<button onclick="check_input();">Check GCode</button>
 	 	</br>
 		<footer style="color:black">
-			<p>&copy; 2024 Adam McKenney &ndash; Free Software, see <a href="https://github.com/mckenney5/gmc">GitHub</a> &ndash; Version 1.1.0</p>
+			<p>&copy; 2024 Adam McKenney &ndash; Free Software, see <a href="https://github.com/mckenney5/gmc">GitHub</a> &ndash; Version 1.1.1</p>
 		</footer>
 	</div>
 
@@ -240,31 +240,6 @@ function check_gcode(gcode_list){
 		},
 	}
 
-<<<<<<< HEAD
-	//flags
-	let has_g90 = false;
-	let has_f10 = false;
-	let has_m03 = false;
-	let has_m05 = false;
-	let has_g00 = false;
-	let has_g01 = false;
-	let has_g02 = false;
-	let has_g03 = false;
-	let has_z_change = false;
-
-	//defaults
-	const x_low_bounds = 0.0;
-	const x_high_bounds = 4.0;
-	const y_low_bounds = 0.0;
-	const y_high_bounds = 4.0;
-	const z_low_bounds = -0.250;
-	const z_high_bounds = 1.0;
-	const i_low_bounds = -4.0;
-	const i_high_bounds = 4.0;
-	const j_low_bounds = -4.0;
-	const j_high_bounds = 4.0;
-=======
->>>>>>> testing
 	const minimum_line_length = 25;
 	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
 	const valid_mcode = ["M03", "M05"];
@@ -306,25 +281,6 @@ function check_gcode(gcode_list){
 		for(let j = 0; j < gcode_tokens.length; j++){
 			console.log("Checking token '" + gcode_tokens[j] + "'");
 			if(gcode_tokens[j][0] == '('){
-<<<<<<< HEAD
-				//HACK to skip the line when we see a paren
-				break;
-			} else if(gcode_tokens[j] == "G90"){
-				if(has_g90 == true)
-					log('W', "Repeat G90 decleration, line " + (i+1));
-				else
-					has_g90 = true;
-			} else if(gcode_tokens[j] == "F10"){
-				if(has_f10 == true)
-					log('W', "Repeat F10 decleration, line " + (i+1));
-				else
-					has_f10 = true;
-=======
-				// HACK skips the rest of the line. TODO loop until other ) is found
-				break;
-			} else if(valid_gcode.includes(gcode_tokens[j])){
-				handle_gcode(gcode_tokens[j], error_list, i, flags);
->>>>>>> testing
 			} else if(gcode_tokens[j][0] == 'F'){
 				handle_fcode(gcode_tokens[j], error_list, i, flags);
 			} else if(valid_mcode.includes(gcode_tokens[j])){

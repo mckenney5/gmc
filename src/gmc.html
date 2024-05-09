@@ -28,48 +28,65 @@ SOFTWARE.
 <head>
 	<title> G &amp; M Checker </title>
 	<style>
-	/* Style to make each div 33% of the screen width */
-	.column {
-		width: 33.33%;
-		float: left;
-		box-sizing: border-box;
-		padding: 15px; /* Add padding for better appearance */
-		box-sizing: border-box;
-	}
-	.center-heading {
-		text-align: center;
-	}
-	.programming {
-		font-family: "Courier New", Courier, monospace;
-	}
-	mark {
-		background-color: red;
-		color: black;
-	}
+/* Style to make each div 33% of the screen width */
+.main {
+  display: flex;
+  align-items: center; /* Vertically center the flex items */
+  justify-content: center; /* Horizontally center the flex items */
+  flex-direction: column; /* Arrange flex items vertically */
+}
+
+.column {
+  width: 100%; /* Each column takes up full width */
+  padding: 15px; /* Add padding for better appearance */
+  box-sizing: border-box;
+  text-align: center; /* Center the content horizontally */
+}
+
+.center-heading {
+  text-align: center; /* Center the header text */
+}
+
+/* Center the div containing text */
+.text-container {
+  text-align: left; /* Left justify the text within the container */
+  padding-left: 33%; /* Padding on the left/right side as a percentage of the screen width */
+  padding-right: 33%;
+}
+
+.programming {
+  font-family: "Courier New", Courier, monospace;
+}
+
+mark {
+  background-color: red;
+  color: black;
+}
 	</style>
 </head>
 <body style="background-color:darkgray; color:white;">
-	<div class="column">
-		<h1 class="center-heading"> User Input </h1>
-		<textarea id="user_input" rows="25" cols="50">Paste Your GCode Here...</textarea><br>
-	 	<button onclick="check_input();">Check GCode</button>
-	 	</br>
-		<footer style="color:black">
-			<p>&copy; 2024 Adam McKenney &ndash; Free Software, see <a href="https://github.com/mckenney5/gmc">GitHub</a> &ndash; Version 1.1.0</p>
-		</footer>
+	<div class="main">
+		<div class="column" id="column">
+			<h1 class="center-heading"> User Input </h1>
+			<textarea id="user_input" rows="25" cols="50" placeholder="Paste Your GCode Here..."></textarea></br>
+		 	<button onclick="check_input();">Check GCode</button>
+		 	</br>
+			<footer style="color:black">
+				<p>&copy; 2024 Adam McKenney &ndash; Free Software, see <a href="https://github.com/mckenney5/gmc">GitHub</a> &ndash; Version 1.2.0</p>
+			</footer>
+		</div>
+		
+		<div class="column" id="column">
+			<h1 class="center-heading"> Detailed Look </h1>
+			<div class="text-container"><p id="line_output" class="programming"><br></p></div>
+		</div>
+		
+		<div class="column" id="column">
+			<h1 class="center-heading"> Output </h1>
+			<div class="text-container"><p id="output"><br></p>
+			<p id="error_count"><br></p></div>
+		</div>
 	</div>
-
-	<div class="column">
-		<h1 class="center-heading"> Detailed Look </h1>
-		<p id="line_output" class="programming"><br></p>
-	</div>
-
-	<div class="column">
-		<h1 class="center-heading"> Output </h1>
-		<p id="output"><br></p>
-		<p id="error_count"><br></p>
-	</div>
-	
 	<script>
 function write_to_output(data){
 	document.getElementById("output").innerHTML += data + "</br></br>";
@@ -84,20 +101,23 @@ function refresh_error_count(){
 }
 
 function output_program(data, error_list){
-	//writes to line_output in html, highlights lines that have issues
+//writes to line_output in html, highlights lines that have issues
+	const SPACE = '\u{2002}'; //unicode space because web browsers like to trim white space I guess
 	let line_number = 0;
 	for(let i = 0; i < data.length; i++){
 		// set up pretty line numbers
 		if((i+1) < 10)
-			line_number = "|  " + (i+1) + "| "; // <-- note these are unicode spaces
+			line_number = `|${SPACE}${SPACE}${SPACE}${i+1}|${SPACE}`;
 		else if((i+1) < 100)
-			line_number = "| " + (i+1) + "| "; // <--
+			line_number = `|${SPACE}${SPACE}${i+1}|${SPACE}`;
+		else if((i+1) < 1000)
+			line_number = `|${SPACE}${i+1}|${SPACE}`;
 		else
-			line_number = (i+1);
+			line_number = `|${i+1}|`;
 			
 		// check if there is an error on that life, if so, mark it
 		if(error_list.includes(i))
-			write_to_detailed_look("<mark>" + line_number + data[i] + " </mark>"); // <--
+			write_to_detailed_look("<mark>" + line_number + data[i] + SPACE + "</mark>"); // <--
 		else
 			write_to_detailed_look(line_number + data[i]); 
 	}
@@ -172,7 +192,6 @@ function handle_typos(gcode, error_list, line_number, typo_list){
 		log('E', "You used the letter 'o' instead of the number 0 (e.x. Go1 =/= G01), line " + (line_number+1));
 	} else if(gcode.trim() == ''){
 		//check if the command was just white space, if so, this can be ignored without an error
-		console.log("Ignoring white space line " + (line_number+1));
 		return;
 	} else if(!isNaN(parseFloat(gcode))){
 		log('E', "Number is missing axis (X/Y/Z/I/J), line " + (line_number+1));
@@ -184,11 +203,10 @@ function handle_typos(gcode, error_list, line_number, typo_list){
 
 function bounds_check(cord, new_value, error_list, line_number, flags){
 //checks the coordinates by giving it a new value, then checking the bounds
-	console.log("Changing " + cord.name + " with the value '" + new_value + "'");
 
 	// checks if the number is not a float, then logs an error
 	if(new_value[0] == ' '){
-		console.log("Submit a bug report if you see this in the console. bounds_check --> '" + new_value + "'");
+		console.log("Submit a bug report if you see this in the console. In bounds_check --> '" + new_value + "'");
 		log('E', "Space between coordinate '" + cord.name + "' and '" + new_value.substring(1) + "', line " + (line_number+1));
 		error_list.push(line_number);
 	} else if(isNaN(parseFloat(new_value))) {
@@ -204,6 +222,103 @@ function bounds_check(cord, new_value, error_list, line_number, flags){
 	// check bounds
 	if(cord.current_value > cord.high_bounds || cord.current_value < cord.low_bounds){
 		log('E', cord.name + " is out of bounds (" + cord.low_bounds + " through " + cord.high_bounds + "), line " + (line_number+1));
+		error_list.push(line_number);
+	}
+}
+
+function calculate_arc_center(x1, y1, x2, y2, i, j) {
+	
+	// Convert to floats
+	x1 = parseFloat(x1);
+	y1 = parseFloat(y1);
+	x2 = parseFloat(x2);
+	y2 = parseFloat(y2);
+	i  = parseFloat(i);
+	j  = parseFloat(j);
+	
+	
+    // Calculate the midpoint
+    const midpoint_x = (x1 + x2) / 2;
+    const midpoint_y = (y1 + y2) / 2;
+
+    // Calculate the vector from start to end
+    const vector_x = x2 - x1;
+    const vector_y = y2 - y1;
+
+    // Calculate the half-length of the vector
+    const vector_half_length = Math.sqrt((vector_x / 2) ** 2 + (vector_y / 2) ** 2);
+
+    if (vector_half_length === 0) {
+        // If the radius is zero, set the center to the midpoint
+        return { center_x: midpoint_x, center_y: midpoint_y };
+    }
+
+    // Calculate the direction perpendicular to the start-to-end vector
+    const direction_x = -vector_y / (2 * vector_half_length);
+    const direction_y = vector_x / (2 * vector_half_length);
+
+    // Calculate the center of the arc
+    const center_x = midpoint_x + i * vector_half_length + j * direction_x;
+    const center_y = midpoint_y + i * vector_half_length + j * direction_y;
+
+    return { x: parseFloat(center_x), y: parseFloat(center_y) };
+}
+
+function handle_arcs(cords, gcode_line, error_list, line_number, flags){
+// TODO FIXME might be a type issue with objects. Math is wrong when called from here but not manually from the console!
+
+	// Reset I and J status
+	cords.i.changed = false;
+	cords.j.changed = false;
+	
+	// Save the X and Y as start points
+	let start_x = cords.x.current_value;
+	let start_y = cords.y.current_value;
+	console.log("s X" + start_x + " | Y" + start_y);
+	
+	
+	// Get the new X, Y, I, and J
+	let gcode_tokens = gcode_line.split(" ");
+	for(let j = 0; j < gcode_tokens.length; j++){
+			if(gcode_tokens[j][0] == '('){
+				// HACK skips the rest of the line. TODO loop until other ) is found
+				break;
+			} else if(gcode_tokens[j][0] == 'X'){
+				bounds_check(cords.x, gcode_tokens[j].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[j][0] == 'Y'){
+				bounds_check(cords.y, gcode_tokens[j].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[j][0] == 'Z'){
+				bounds_check(cords.z, gcode_tokens[j].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[j][0] == 'I'){
+				bounds_check(cords.i, gcode_tokens[j].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[j][0] == 'J'){
+				bounds_check(cords.j, gcode_tokens[j].substring(1), error_list, line_number, flags);
+			} else {
+				// check for typos, if not then error out for unknown command
+				handle_typos(gcode_tokens[j], error_list, line_number, typo_list);
+			}
+		}
+		
+	// Check if I and J changed, if not, error out and leave
+	if(cords.i.changed == false || cords.j.changed == false){
+		log('E', "I and/or J was not set for your arc, line " + (line_number+1));
+		error_list.push(line_number);
+		return;
+	}
+
+	console.log(start_x +  " " + start_y +  " " + cords.x.current_value + " " + cords.y.current_value +  " " + cords.i.current_value +  " " + cords.j.current_value);
+	console.log(typeof(start_x) +  " " + typeof(start_y) +  " " + typeof(cords.x.current_value) + " " + typeof(cords.y.current_value) +  " " + typeof(cords.i.current_value) +  " " + typeof(cords.j.current_value));
+	console.log(calculate_arc_center(start_x, start_y, cords.x.current_value, cords.y.current_value, cords.i.current_value, cords.j.current_value));
+	const center = calculate_arc_center(start_x, start_y, cords.x.current_value, cords.y.current_value, cords.i.current_value, cords.j.current_value);
+
+	console.log("Center X" + center.center_x + " | Y" + center.center_y);
+	
+	// check I & J
+	if(cords.i.current_value != center.center_x - start_x){
+		log('E', "Arc math is not correct for I, your calculated center should be X" + center.center_x + " Y" + center.center_y + ", line " + (line_number+1));
+		error_list.push(line_number);
+	} else if(cords.j.current_value != center.center_y - start_y){
+		log('E', "Arc math is not correct for J, your calculated center should be X" + center.center_x + " Y" + center.center_y + ", line " + (line_number+1));
 		error_list.push(line_number);
 	}
 }
@@ -241,12 +356,14 @@ function check_gcode(gcode_list){
 			low_bounds: -4.0,
 			high_bounds: 4.0,
 			current_value: 0.0,
+			changed: false,
 		},
 		j: {
 			name: 'J',
 			low_bounds: -4.0,
 			high_bounds: 4.0,
 			current_value: 0.0,
+			changed: false,
 		},
 	}
 
@@ -283,16 +400,19 @@ function check_gcode(gcode_list){
 
 	for(let i = 0; i < gcode_list.length; i++){
 		let gcode_tokens = gcode_list[i].split(" ");
-		console.log("gcode_list[" + i + "] '" + gcode_list[i] + "'");
-		console.log("gcode_tokens '" + gcode_tokens + "'");
 
 		// check each token
 		for(let j = 0; j < gcode_tokens.length; j++){
-			console.log("Checking token '" + gcode_tokens[j] + "'");
 			if(gcode_tokens[j][0] == '('){
 				// HACK skips the rest of the line. TODO loop until other ) is found
 				break;
+			} else if(gcode_tokens[j] == "" || gcode_tokens[j] == '\t'){
+				console.log("Ignoring extra space");
 			} else if(valid_gcode.includes(gcode_tokens[j])){
+				if(gcode_tokens[j] == "G02" || gcode_tokens[j] == "G03"){
+					handle_arcs(cords, gcode_list[i].substring(4), error_list, i, flags)
+					break;
+				}
 				handle_gcode(gcode_tokens[j], error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'F'){
 				handle_fcode(gcode_tokens[j], error_list, i, flags);

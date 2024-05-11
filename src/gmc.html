@@ -115,7 +115,7 @@ function output_program(data, error_list){
 		else
 			line_number = `|${i+1}|`;
 			
-		// check if there is an error on that life, if so, mark it
+		// check if there is an error on that line, if so, mark it
 		if(error_list.includes(i))
 			write_to_detailed_look("<mark>" + line_number + data[i] + SPACE + "</mark>"); // <--
 		else
@@ -226,60 +226,41 @@ function bounds_check(cord, new_value, error_list, line_number, flags){
 	}
 }
 
-function calculate_arc_center(x1, y1, x2, y2, i, j) {
+function calc(starting_x, starting_y, ending_x, ending_y, i, j) {
+	starting_x = parseFloat(starting_x);
+	starting_y = parseFloat(starting_y);
+	ending_x = parseFloat(ending_x);
+	ending_y = parseFloat(ending_y);
 	
-	// Convert to floats
-	x1 = parseFloat(x1);
-	y1 = parseFloat(y1);
-	x2 = parseFloat(x2);
-	y2 = parseFloat(y2);
-	i  = parseFloat(i);
-	j  = parseFloat(j);
+	let center_x = starting_x + i;
+	let center_y = starting_y + j;
 	
+	if(ending_x != center_x + i && ending_x != center_x - i){
+		console.log("I is wrong");
+	}
+	if(ending_y != center_y + j && ending_y != center_y - j){
+		console.log("J is wrong");
+	}
 	
-    // Calculate the midpoint
-    const midpoint_x = (x1 + x2) / 2;
-    const midpoint_y = (y1 + y2) / 2;
-
-    // Calculate the vector from start to end
-    const vector_x = x2 - x1;
-    const vector_y = y2 - y1;
-
-    // Calculate the half-length of the vector
-    const vector_half_length = Math.sqrt((vector_x / 2) ** 2 + (vector_y / 2) ** 2);
-
-    if (vector_half_length === 0) {
-        // If the radius is zero, set the center to the midpoint
-        return { center_x: midpoint_x, center_y: midpoint_y };
-    }
-
-    // Calculate the direction perpendicular to the start-to-end vector
-    const direction_x = -vector_y / (2 * vector_half_length);
-    const direction_y = vector_x / (2 * vector_half_length);
-
-    // Calculate the center of the arc
-    const center_x = midpoint_x + i * vector_half_length + j * direction_x;
-    const center_y = midpoint_y + i * vector_half_length + j * direction_y;
-
-    return { x: parseFloat(center_x), y: parseFloat(center_y) };
 }
 
 function handle_arcs(cords, gcode_line, error_list, line_number, flags){
-// TODO FIXME might be a type issue with objects. Math is wrong when called from here but not manually from the console!
 
 	// Reset I and J status
 	cords.i.changed = false;
 	cords.j.changed = false;
 	
 	// Save the X and Y as start points
-	let start_x = cords.x.current_value;
-	let start_y = cords.y.current_value;
-	console.log("s X" + start_x + " | Y" + start_y);
+	let starting_x = parseFloat(cords.x.current_value);
+	let starting_y = parseFloat(cords.y.current_value);
 	
-	
+	// Get deflection of arc
+	let clockwise;
+
 	// Get the new X, Y, I, and J
 	let gcode_tokens = gcode_line.split(" ");
 	for(let j = 0; j < gcode_tokens.length; j++){
+		console.log(gcode_tokens[j]);
 			if(gcode_tokens[j][0] == '('){
 				// HACK skips the rest of the line. TODO loop until other ) is found
 				break;
@@ -293,34 +274,52 @@ function handle_arcs(cords, gcode_line, error_list, line_number, flags){
 				bounds_check(cords.i, gcode_tokens[j].substring(1), error_list, line_number, flags);
 			} else if(gcode_tokens[j][0] == 'J'){
 				bounds_check(cords.j, gcode_tokens[j].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[j] == "G02"){
+				clockwise = true;
+			} else if(gcode_tokens[j] == "G03"){
+				clockwise = false;
 			} else {
 				// check for typos, if not then error out for unknown command
 				handle_typos(gcode_tokens[j], error_list, line_number, typo_list);
 			}
 		}
-		
-	// Check if I and J changed, if not, error out and leave
+	// Check if I and J were set, if not, error out and leave
 	if(cords.i.changed == false || cords.j.changed == false){
 		log('E', "I and/or J was not set for your arc, line " + (line_number+1));
 		error_list.push(line_number);
 		return;
 	}
-
-	console.log(start_x +  " " + start_y +  " " + cords.x.current_value + " " + cords.y.current_value +  " " + cords.i.current_value +  " " + cords.j.current_value);
-	console.log(typeof(start_x) +  " " + typeof(start_y) +  " " + typeof(cords.x.current_value) + " " + typeof(cords.y.current_value) +  " " + typeof(cords.i.current_value) +  " " + typeof(cords.j.current_value));
-	console.log(calculate_arc_center(start_x, start_y, cords.x.current_value, cords.y.current_value, cords.i.current_value, cords.j.current_value));
-	const center = calculate_arc_center(start_x, start_y, cords.x.current_value, cords.y.current_value, cords.i.current_value, cords.j.current_value);
-
-	console.log("Center X" + center.center_x + " | Y" + center.center_y);
 	
-	// check I & J
-	if(cords.i.current_value != center.center_x - start_x){
-		log('E', "Arc math is not correct for I, your calculated center should be X" + center.center_x + " Y" + center.center_y + ", line " + (line_number+1));
-		error_list.push(line_number);
-	} else if(cords.j.current_value != center.center_y - start_y){
-		log('E', "Arc math is not correct for J, your calculated center should be X" + center.center_x + " Y" + center.center_y + ", line " + (line_number+1));
+	// Check the arc
+	
+	// Gather info about the arc
+	let ending_x = parseFloat(cords.x.current_value);
+	let ending_y = parseFloat(cords.y.current_value);
+	let i = parseFloat(cords.i.current_value);
+	let j = parseFloat(cords.j.current_value);
+	
+	// Calculate Center Point
+	let center_x = starting_x + i;
+	let center_y = starting_y + j;
+	
+	// Make sure the calculated center is equidistant from the start and end points
+	let error_msg = "";
+	if(ending_x != center_x + i && ending_x != center_x - i){
+		error_msg += "I";
+	}
+	if(ending_y != center_y + j && ending_y != center_y - j){
+		error_msg += (error_msg.length == 0) ? "J" : " and J";
+	}
+	console.log("Center X" + center_x + " | Y" + center_y);
+	
+	// If not equidistant, error
+	if(error_msg.length > 0){
+		log('E', `${error_msg} not correct. Check your math. That would make your center ${center_x},${center_y}. Line ${line_number+1}`);
 		error_list.push(line_number);
 	}
+	
+	// TODO calculate apex of arc to make sure it is in bounds, using the vars clockwise, x high/low, y high/low
+	
 }
 
 function check_gcode(gcode_list){
@@ -409,8 +408,13 @@ function check_gcode(gcode_list){
 			} else if(gcode_tokens[j] == "" || gcode_tokens[j] == '\t'){
 				console.log("Ignoring extra space");
 			} else if(valid_gcode.includes(gcode_tokens[j])){
-				if(gcode_tokens[j] == "G02" || gcode_tokens[j] == "G03"){
-					handle_arcs(cords, gcode_list[i].substring(4), error_list, i, flags)
+				if(gcode_tokens[j] == "G02"){
+					flags["G02"] = true;
+					handle_arcs(cords, gcode_list[i], error_list, i, flags)
+					break;
+				} else if(gcode_tokens[j] == "G03"){
+					flags["G03"] = true;
+					handle_arcs(cords, gcode_list[i], error_list, i, flags)
 					break;
 				}
 				handle_gcode(gcode_tokens[j], error_list, i, flags);
@@ -425,9 +429,11 @@ function check_gcode(gcode_list){
 			} else if(gcode_tokens[j][0] == 'Z'){
 				bounds_check(cords.z, gcode_tokens[j].substring(1), error_list, i, flags);
 			} else if(gcode_tokens[j][0] == 'I'){
-				bounds_check(cords.i, gcode_tokens[j].substring(1), error_list, i, flags);
+				log('E', "I cannot be set with G00 or G01 (aka straight lines), line " + (i+1));
+				error_list.push(i);
 			} else if(gcode_tokens[j][0] == 'J'){
-				bounds_check(cords.j, gcode_tokens[j].substring(1), error_list, i, flags);
+				log('E', "J cannot be set with G00 or G01 (aka straight lines), line " + (i+1));
+				error_list.push(i);
 			} else {
 				// check for typos, if not then error out for unknown command
 				handle_typos(gcode_tokens[j], error_list, i, typo_list);
@@ -447,7 +453,7 @@ function check_gcode(gcode_list){
 	
 	// warnings
 	if(flags["G00"] == false) log('W', "Missing G00");
-	if(flags["G02"] == false & flags["G03"] == false) log('W', "Missing G02 or G03 (arcs)");
+	if(flags["G02"] == false && flags["G03"] == false) log('W', "Missing G02 or G03 (arcs)");
 	if(gcode_list.length < minimum_line_length) log('W', "Does not meet minimum line length of " + minimum_line_length);
 
 	// writes out the program to show the user what they did wrong
@@ -458,7 +464,7 @@ function check_input(){
 //program Start
 	reset_state();
 	let raw_gcode = document.getElementById('user_input').value;
-	let raw_gcode_list = raw_gcode.toUpperCase().split("\n");
+	let raw_gcode_list = raw_gcode.toUpperCase().trimEnd().split("\n");
 	check_gcode(raw_gcode_list);
 	refresh_error_count();
 }

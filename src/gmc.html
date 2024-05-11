@@ -22,13 +22,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+--
+NOTE:
+This is all in one file so it can be easily added to Google Sites
 
 -->
 
 <head>
 	<title> G &amp; M Checker </title>
 	<style>
-/* Style to make each div 33% of the screen width */
+
 .main {
   display: flex;
   align-items: center; /* Vertically center the flex items */
@@ -68,11 +71,12 @@ mark {
 	<div class="main">
 		<div class="column" id="column">
 			<h1 class="center-heading"> User Input </h1>
-			<textarea id="user_input" rows="25" cols="50" placeholder="Paste Your GCode Here..."></textarea></br>
+			<p id="error_count_top"></p>
+			<textarea id="user_input" rows="30" cols="70" placeholder="Paste Your G and M Code Here..."></textarea></br>
 		 	<button onclick="check_input();">Check GCode</button>
 		 	</br>
 			<footer style="color:black">
-				<p>&copy; 2024 Adam McKenney &ndash; Free Software, see <a href="https://github.com/mckenney5/gmc">GitHub</a> &ndash; Version 1.2.0</p>
+				<p id="clout">&copy; 2024 Adam McKenney &ndash; Free Software, see <a href="https://github.com/mckenney5/gmc">GitHub</a> &ndash; Version </p>
 			</footer>
 		</div>
 		
@@ -84,7 +88,7 @@ mark {
 		<div class="column" id="column">
 			<h1 class="center-heading"> Output </h1>
 			<div class="text-container"><p id="output"><br></p>
-			<p id="error_count"><br></p></div>
+			<p id="error_count_bottom"><br></p></div>
 		</div>
 	</div>
 	<script>
@@ -97,7 +101,10 @@ function write_to_detailed_look(data){
 }
 
 function refresh_error_count(){
-	document.getElementById("error_count").innerHTML = "Error(s): " + errors + " | Warning(s): " + warnings + "</br>";
+	document.getElementById("error_count_top").innerHTML = "Error(s): " + errors + " | Warning(s): " + warnings + "</br>";
+	if((errors + warnings) > 0) document.getElementById("error_count_top").innerHTML += "Scroll down for details";
+	 
+	document.getElementById("error_count_bottom").innerHTML = "Error(s): " + errors + " | Warning(s): " + warnings + "</br>";
 }
 
 function output_program(data, error_list){
@@ -126,6 +133,8 @@ function output_program(data, error_list){
 function reset_state(){
 	document.getElementById("output").innerHTML = "</br>";
 	document.getElementById("line_output").innerHTML = "</br>";
+	document.getElementById("error_count_top").innerHTML = "";
+	document.getElementById("error_count_bottom").innerHTML = "";
 	warnings = 0;
 	errors = 0;
 	console.clear();
@@ -179,7 +188,7 @@ function handle_fcode(gcode, error_list, line_number, flags){
 
 function handle_mcode(gcode, error_list, line_number, flags){
 //does checks on the M (machine) codes
-	// Before calling this function, the program should check if it is an aproved M code
+	// Before calling this function, the program should check if it is an approved M code
 	if(flags[gcode] == true)
 		log('W', "Repeat " + gcode + " decleration, line " + (line_number+1));
 	else
@@ -226,24 +235,6 @@ function bounds_check(cord, new_value, error_list, line_number, flags){
 	}
 }
 
-function calc(starting_x, starting_y, ending_x, ending_y, i, j) {
-	starting_x = parseFloat(starting_x);
-	starting_y = parseFloat(starting_y);
-	ending_x = parseFloat(ending_x);
-	ending_y = parseFloat(ending_y);
-	
-	let center_x = starting_x + i;
-	let center_y = starting_y + j;
-	
-	if(ending_x != center_x + i && ending_x != center_x - i){
-		console.log("I is wrong");
-	}
-	if(ending_y != center_y + j && ending_y != center_y - j){
-		console.log("J is wrong");
-	}
-	
-}
-
 function handle_arcs(cords, gcode_line, error_list, line_number, flags){
 
 	// Reset I and J status
@@ -255,32 +246,32 @@ function handle_arcs(cords, gcode_line, error_list, line_number, flags){
 	let starting_y = parseFloat(cords.y.current_value);
 	
 	// Get deflection of arc
-	let clockwise;
+	let clockwise = true;
 
 	// Get the new X, Y, I, and J
 	let gcode_tokens = gcode_line.split(" ");
-	for(let j = 0; j < gcode_tokens.length; j++){
-		console.log(gcode_tokens[j]);
-			if(gcode_tokens[j][0] == '('){
+	for(let i = 0; i < gcode_tokens.length; i++){
+		console.log(gcode_tokens[i]);
+			if(gcode_tokens[i][0] == '('){
 				// HACK skips the rest of the line. TODO loop until other ) is found
 				break;
-			} else if(gcode_tokens[j][0] == 'X'){
-				bounds_check(cords.x, gcode_tokens[j].substring(1), error_list, line_number, flags);
-			} else if(gcode_tokens[j][0] == 'Y'){
-				bounds_check(cords.y, gcode_tokens[j].substring(1), error_list, line_number, flags);
-			} else if(gcode_tokens[j][0] == 'Z'){
-				bounds_check(cords.z, gcode_tokens[j].substring(1), error_list, line_number, flags);
-			} else if(gcode_tokens[j][0] == 'I'){
-				bounds_check(cords.i, gcode_tokens[j].substring(1), error_list, line_number, flags);
-			} else if(gcode_tokens[j][0] == 'J'){
-				bounds_check(cords.j, gcode_tokens[j].substring(1), error_list, line_number, flags);
-			} else if(gcode_tokens[j] == "G02"){
+			} else if(gcode_tokens[i][0] == 'X'){
+				bounds_check(cords.x, gcode_tokens[i].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[i][0] == 'Y'){
+				bounds_check(cords.y, gcode_tokens[i].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[i][0] == 'Z'){
+				bounds_check(cords.z, gcode_tokens[i].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[i][0] == 'I'){
+				bounds_check(cords.i, gcode_tokens[i].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[i][0] == 'J'){
+				bounds_check(cords.j, gcode_tokens[i].substring(1), error_list, line_number, flags);
+			} else if(gcode_tokens[i] == "G02"){
 				clockwise = true;
-			} else if(gcode_tokens[j] == "G03"){
+			} else if(gcode_tokens[i] == "G03"){
 				clockwise = false;
 			} else {
 				// check for typos, if not then error out for unknown command
-				handle_typos(gcode_tokens[j], error_list, line_number, typo_list);
+				handle_typos(gcode_tokens[i], error_list, line_number, typo_list);
 			}
 		}
 	// Check if I and J were set, if not, error out and leave
@@ -295,19 +286,19 @@ function handle_arcs(cords, gcode_line, error_list, line_number, flags){
 	// Gather info about the arc
 	let ending_x = parseFloat(cords.x.current_value);
 	let ending_y = parseFloat(cords.y.current_value);
-	let i = parseFloat(cords.i.current_value);
-	let j = parseFloat(cords.j.current_value);
+	let I = parseFloat(cords.i.current_value);
+	let J = parseFloat(cords.j.current_value);
 	
 	// Calculate Center Point
-	let center_x = starting_x + i;
-	let center_y = starting_y + j;
+	let center_x = starting_x + I;
+	let center_y = starting_y + J;
 	
 	// Make sure the calculated center is equidistant from the start and end points
 	let error_msg = "";
-	if(ending_x != center_x + i && ending_x != center_x - i){
+	if(ending_x != center_x + I && ending_x != center_x - I){
 		error_msg += "I";
 	}
-	if(ending_y != center_y + j && ending_y != center_y - j){
+	if(ending_y != center_y + J && ending_y != center_y - J){
 		error_msg += (error_msg.length == 0) ? "J" : " and J";
 	}
 	console.log("Center X" + center_x + " | Y" + center_y);
@@ -468,6 +459,14 @@ function check_input(){
 	check_gcode(raw_gcode_list);
 	refresh_error_count();
 }
+
+function get_version(){
+	const VERSION = "1.3.0";
+	console.log("Version " + VERSION);
+	document.getElementById("clout").innerHTML += VERSION;
+}
+
+get_version(); //Render version on HTML and spit it to console for debugging
 
 	</script>
 </body>

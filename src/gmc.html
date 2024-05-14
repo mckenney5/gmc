@@ -358,8 +358,8 @@ function check_gcode(gcode_list){
 	}
 
 	const minimum_line_length = 25;
-	const valid_gcode = ["G00", "G01", "G02", "G03", "G90"];
-	const valid_mcode = ["M03", "M05"];
+	const valid_gcode = ["G00", "G01", "G02", "G03", "G90", "G0", "G1", "G2", "G3"];
+	const valid_mcode = ["M03", "M05", "M3", "M5"];
 	const valid_cords = ['X', 'Y', 'Z', 'I', 'J'];
 	const typo_list = ["GOO", "GO0", "G0O", "GO1", "GO2", "GO3", "G9O", "MO3", "MO5", "F1O"]; //note those are o's not 0's
 	// --- end defaults --- \\\
